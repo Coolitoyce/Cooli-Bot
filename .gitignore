@@ -1,0 +1,10 @@
+# Folders to ignore
+__pycache__/
+.vscode/
+
+# Files to ignore
+bot.log
+database.db
+cancelled.py
+test.py
+bor.py
