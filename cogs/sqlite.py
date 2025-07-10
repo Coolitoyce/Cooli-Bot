@@ -1,5 +1,3 @@
-import discord
-import asyncio
 import aiosqlite, sqlite3
 from discord.ext import commands
 from discord import app_commands
@@ -7,6 +5,7 @@ from typing import Optional
 
 # This cog contains owner-only commands to manage the SQLite database for the bot
 class Database(commands.Cog):
+    """Cog for managing the SQLite database."""
     def __init__(self, bot: commands.Bot):
         # Initialize the cog with the bot instance
         self.bot = bot
@@ -61,19 +60,19 @@ class Database(commands.Cog):
     async def create_db(self, ctx: commands.Context, name: str, *args):
         operation = f"CREATE TABLE IF NOT EXISTS {name} ("
         try:
-            # Split the arguments by commas to get the column definitions
+            # Collect column definitions from all arguments
+            columns = []
             for arg in args:
-                splitted = str(arg).split(",") 
+                columns.extend(str(arg).split(","))
             
-            for index, item in enumerate(splitted):
-                if index == len(splitted)-1:
+            for index, item in enumerate(columns):
+                if index == len(columns) - 1:
                     operation += f"{item}"
-                
-                else:    
+                else:
                     operation += f"{item},"
                     
         except Exception as e:
-            await ctx.reply(f"Error formating the database rows entered: {e}")
+            await ctx.reply(f"Error formatting the database rows entered: {e}")
 
         operation += ")"
 
@@ -89,4 +88,5 @@ class Database(commands.Cog):
 
 # Register the cog with the bot
 async def setup(bot: commands.Bot):
+    """Registers the cog with the bot"""
     await bot.add_cog(Database(bot))

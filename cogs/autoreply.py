@@ -1,22 +1,20 @@
 import discord
-import asyncio
-import aiosqlite, sqlite3
+import aiosqlite
 import logging
 from discord.ext import commands
 from discord import app_commands
-from typing import Optional
 
-# Set up logging to a file
-logging.basicConfig(
-    level=logging.ERROR,  # Log only errors and above (e.g., critical)
-    format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
-    datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
-    filename='bot.log',  # Log file name
-    filemode='a'  # Append to existing file
-)
+# logging.basicConfig(
+#     level=logging.ERROR,  # Log only errors and above (e.g., critical)
+#     format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
+#     datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
+#     filename='bot.log',  # Log file name
+#     filemode='a'  # Append to existing file
+# )
 
 
 @app_commands.guild_only()
+@app_commands.default_permissions(manage_guild=True)
 class AutoReply(commands.GroupCog, name="autoreply"):
     """Cog for managing autoreplies in a server."""
     def __init__(self, bot: commands.Bot):
@@ -44,8 +42,6 @@ class AutoReply(commands.GroupCog, name="autoreply"):
     # ADD NEW AUTOREPLY COMMAND 
     #===========================
     @app_commands.command(name="add")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(trigger="The message that will trigger the autoreply when sent", reply="What will the bot reply to the trigger message?")
     async def add_reply(self, interaction: discord.Interaction, trigger: str, reply: str):
         """Add a new autoreply trigger in this server"""
@@ -71,8 +67,6 @@ class AutoReply(commands.GroupCog, name="autoreply"):
     # UPDATE AUTOREPLY COMMAND
     #==========================
     @app_commands.command(name="update")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(trigger="The trigger to update", reply="The bot's new reply to the trigger message")
     async def update_reply(self, interaction: discord.Interaction, trigger: str, reply: str):
         """Update the bot's reply to an existing trigger"""
@@ -105,8 +99,6 @@ class AutoReply(commands.GroupCog, name="autoreply"):
     # REMOVE AUTOREPLY COMMAND
     #==========================
     @app_commands.command(name="remove")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(trigger="The trigger message to be deleted")
     async def remove_reply(self, interaction: discord.Interaction, trigger: str):
         """Remove an existing autoreply trigger in this server"""
@@ -135,8 +127,6 @@ class AutoReply(commands.GroupCog, name="autoreply"):
     # CLEAR ALL AUTOREPLIES COMMAND
     #===============================
     @app_commands.command(name="clear")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
     async def clear_reply(self, interaction: discord.Interaction):
         """Clear all autoreplies in this server"""
         # Connect to the database and check if there are any autoreplies set for the server
@@ -161,8 +151,6 @@ class AutoReply(commands.GroupCog, name="autoreply"):
     # LIST AUTOREPLIES COMMAND
     #==========================
     @app_commands.command(name="list")
-    @app_commands.guild_only()
-    @app_commands.default_permissions(manage_guild=True)
     async def list_replies(self, interaction: discord.Interaction):
         """View all autoreplies in this server."""
         # Get all autoreplies set for the server from the database
@@ -174,10 +162,10 @@ class AutoReply(commands.GroupCog, name="autoreply"):
 
         except Exception as e:
             logging.error(f"Error fetching autoreplies: {e}")
-            return await interaction.response.send_message(f"Error: `{e}`")
+            return await interaction.edit_original_response(content=f"Error: `{e}`")
             
         if not rows:
-            return await interaction.response.send_message("No autoreplies set for this server.")
+            return await interaction.edit_original_response(content="No autoreplies set for this server.")
         
         # Format the autoreplies into a message
         entries = []
@@ -201,11 +189,12 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 entries.append(f"> `{trigger}` → {response}")
 
         msg = "\n".join(entries)
-        await interaction.response.send_message(f"📃 **Autoreplies in this server:**\n\n{msg}")
+        await interaction.followup.send(content=f"📃 **Autoreplies in this server:**\n\n{msg}")
 
 
-# Register the cog with the bot and create the database table if it doesn't exist
+# Registers the cog with the bot and creates the database table if it doesn't exist
 async def setup(bot: commands.Bot):
+    """Registers the cog with the bot"""
     async with aiosqlite.connect('database.db') as db:
         await db.execute("""
         CREATE TABLE IF NOT EXISTS autoreplies (

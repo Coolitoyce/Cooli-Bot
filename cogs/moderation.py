@@ -68,6 +68,7 @@ class BanSource(menus.ListPageSource):
 
 
 @app_commands.guild_only()
+@app_commands.default_permissions(kick_members=True, ban_members=True, manage_messages=True)
 class Moderation(commands.GroupCog, name="moderation"):
     """Moderation cog that includes all moderation commands"""
     
@@ -219,4 +220,5 @@ class Moderation(commands.GroupCog, name="moderation"):
 
 # Register the cog with the bot
 async def setup(bot: commands.Bot):
+    """Registers the cog with the bot"""
     await bot.add_cog(Moderation(bot))

@@ -1,21 +1,11 @@
 import discord
 import logging
 import aiosqlite, sqlite3
-import pandas
+from datetime import datetime
 import time
 import re
 from discord.ext import commands, tasks
 from discord import app_commands
-
-# Set up logging to a file
-logging.basicConfig(
-    level=logging.ERROR,  # Log only errors and above (e.g., critical)
-    format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
-    datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
-    filename='bot.log',  # Log file name
-    filemode='a'  # Append to existing file
-)
-
 
 class Reminder(commands.Cog):
     """Reminder cog to set reminders for users"""
@@ -57,7 +47,7 @@ class Reminder(commands.Cog):
                     return logging.error(f"[Reminder Error] Cannot send DM to user {user_id} (forbidden).")                
                     
                 except Exception as e:
-                    return logging.error(f"[Reminder Error] Failed to send reminder: {e}")
+                    logging.error(f"[Reminder Error] Failed to send reminder: {e}")
 
             # Delete reminders that are sent or expired
             await db.execute("DELETE FROM reminders WHERE remind_at <= ?", (now,))
@@ -105,7 +95,7 @@ class Reminder(commands.Cog):
                 # Calculate the remind_at timestamp by adding the time_in_s to the current time
                 remind_at = time_in_s + int(time.time())
                 # Convert the remind_at timestamp to a datetime object in UTC
-                remind_at_datetime = pandas.to_datetime(remind_at, utc=True, unit="s")
+                remind_at_datetime = datetime.fromtimestamp(remind_at).astimezone()
                 
                 async with aiosqlite.connect('database.db') as db:
                     # Insert the reminder into the database
@@ -167,6 +157,7 @@ class Reminder(commands.Cog):
 
 # Register the cog with the bot and create the database table if it doesn't exist
 async def setup(bot: commands.Bot):
+    """Registers the cog with the bot"""
     async with aiosqlite.connect('database.db') as db:
         await db.execute("""
         CREATE TABLE IF NOT EXISTS reminders (

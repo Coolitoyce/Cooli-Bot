@@ -5,20 +5,12 @@ import aiosqlite
 from discord import app_commands
 from discord.ext import commands
 
-# Set up logging to a file
-logging.basicConfig(
-    level=logging.ERROR,  # Log only errors and above (e.g., critical)
-    format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
-    datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
-    filename='bot.log',  # Log file name
-    filemode='a'  # Append to existing file
-)
 
-# This function retrieves the prefix for a specific guild from the database
 async def get_prefix(bot: commands.Bot, message: discord.Message):
+    """Retrieves the prefix for a specific guild from the database"""
     # Check if there is a guild 
     if not message.guild:
-        return
+        return "."
         
     # Get the prefix from the database for the guild
     async with aiosqlite.connect('database.db') as db:
@@ -91,6 +83,7 @@ class Prefix(commands.Cog):
 
 # Register the cog with the bot and create the database table if it doesn't exist
 async def setup(bot: commands.Bot):
+    """Registers the cog with the bot"""
     async with aiosqlite.connect('database.db') as db:
         await db.execute("""
         CREATE TABLE IF NOT EXISTS prefixes (

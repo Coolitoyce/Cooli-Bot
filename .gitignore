@@ -3,6 +3,7 @@ __pycache__/
 .vscode/
 
 # Files to ignore
+.env
 bot.log
 database.db
 cancelled.py
