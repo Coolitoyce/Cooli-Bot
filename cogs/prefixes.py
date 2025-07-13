@@ -9,8 +9,8 @@ from discord.ext import commands
 async def get_prefix(bot: commands.Bot, message: discord.Message):
     """Retrieves the prefix for a specific guild from the database"""
     # Check if there is a guild 
-    if not message.guild:
-        return "."
+    if not message.guild: 
+        return # Prefix commands are only used in guilds
         
     # Get the prefix from the database for the guild
     async with aiosqlite.connect('database.db') as db:

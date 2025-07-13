@@ -1,6 +1,6 @@
 import discord
 import logging
-import random
+from random import choice as random_choice
 from discord import app_commands
 from discord.ext import commands
 from typing import Optional
@@ -24,10 +24,10 @@ async def generate_user_info_embed(ctx_or_interaction, member: discord.Member, b
         if member.roles:
             roles_count = 0
             for role in member.roles:
-                if role != ctx_or_interaction.guild.default_role:
+                if role != ctx_or_interaction.guild.default_role: # Exclude the default @everyone role
                     roles_count += 1
-
-            embed.add_field(name=f"Roles [{roles_count}]", value=", ".join(role.mention for role in member.roles if role != ctx_or_interaction.guild.default_role), inline=False)
+            sorted_roles = sorted(member.roles, key=lambda role: role.position, reverse=True) # Sort roles by position from top to bottom
+            embed.add_field(name=f"Roles [{roles_count}]", value=", ".join(role.mention for role in sorted_roles if role != ctx_or_interaction.guild.default_role), inline=False)
 
     except Exception as e:
         logging.error(f"Error fetching roles for {member.name}({member.id}) in {ctx_or_interaction.guild.name}({ctx_or_interaction.guild.id}): {e}")    
@@ -143,7 +143,7 @@ class General(commands.Cog):
         embed = discord.Embed(title=f"Kill Yourself {member.display_name}",
                         color=ctx.author.color or discord.Color.default())
 
-        embed.set_image(url=random.choice(kys_gif_list))
+        embed.set_image(url=random_choice(kys_gif_list))
         embed.set_footer(text=f"Requested by {ctx.author.name}")
         await ctx.send(embed=embed) 
 
@@ -276,7 +276,7 @@ class General(commands.Cog):
     @commands.command(name="choose")
     async def choose(self, ctx, *choices: str):
         """Randomly chooses one of the choices you provide"""
-        await ctx.send(f"I choose `{random.choice(choices)}`")
+        await ctx.send(f"I choose `{random_choice(choices)}`")
 
     #======================
     # SLASH CHOOSE COMMAND
@@ -302,7 +302,7 @@ class General(commands.Cog):
         optional_choices = [choice3, choice4, choice5, choice6]
         choices.extend(choice for choice in optional_choices if choice is not None)
 
-        await interaction.response.send_message(f"I choose **{random.choice(choices)}**")  
+        await interaction.response.send_message(f"I choose **{random_choice(choices)}**")  
 
     #================
     # TEST COMMAND 
