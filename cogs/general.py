@@ -113,17 +113,17 @@ class General(commands.Cog):
         try:
             if channel:
                 await channel.send(message)
-                await interaction.response.edit_original_response("✅ Sent!")
+                await interaction.edit_original_response(content="✅ Sent!")
 
             else:
                 await interaction.channel.send(message)
-                await interaction.response.edit_original_response("✅ Sent!")
+                await interaction.edit_original_response(content="✅ Sent!")
 
         except discord.Forbidden:
-            await interaction.response.edit_original_response("I don't have permission to send messages in that channel.")
+            await interaction.edit_original_response(content="I don't have permission to send messages in that channel.")
         
         except Exception as e:
-            await interaction.response.edit_original_response(f"❌ Failed to send the message: {e}")    
+            await interaction.edit_original_response(content=f"❌ Failed to send the message: {e}")    
 
     #=============
     # KYS COMMAND 
@@ -131,7 +131,7 @@ class General(commands.Cog):
     @commands.hybrid_command(with_app_command=True, name="kys")
     @commands.guild_only()
     @app_commands.describe(member="The member to die")
-    async def kysso(self, ctx: commands.Context, member: discord.Member):
+    async def kysso(self, ctx: commands.Context, member: discord.Member): 
         """Sends a random kys gif to a member. Don't ask why I made this"""
 
         if member == self.bot.user:

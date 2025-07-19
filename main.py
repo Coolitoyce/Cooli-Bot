@@ -1,14 +1,23 @@
 import discord
 import asyncio
 import logging
-import os
+from os import listdir
 from discord.ext import commands
 from config import TOKEN # Import the bot's token from config.py
 from cogs.general import generate_user_info_embed # Import the function to generate user info embed
 from cogs.prefixes import get_prefix # Import the get_prefix function to set the command prefix dynamically
 
-# Setup logging to a file 
-handler = logging.FileHandler(filename='bot.log', encoding='utf-8', mode='w')
+# Setup logging to a file
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
+    datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
+    handlers= [
+        logging.FileHandler(filename='bot.log', encoding='utf-8', mode='a')
+    ]
+)
+handler = logging.FileHandler(filename='bot.log', encoding='utf-8', mode='a')
+    
 # The bot's Discord activity
 activity = discord.Activity(name="my parents fight", type=discord.ActivityType.watching)
 
@@ -22,7 +31,7 @@ class CooliBot(commands.Bot):
     async def setup_hook(self):
         # Load all cogs from the cogs folder
         cogs_count = 0
-        for filename in os.listdir("./cogs"):
+        for filename in listdir("./cogs"):
             if filename.endswith(".py"):
                 cogs_count += 1
                 await self.load_extension(f"cogs.{filename[:-3]}")
@@ -80,6 +89,7 @@ async def reload(ctx: commands.Context, cog: str):
     try:
         await ctx.bot.reload_extension(f"cogs.{cog}")
         msg = await ctx.send(f"🔁 Reloaded `cogs.{cog}` successfully.")
+        logging.info(f"Cog {cog} was reloaded using the command.")
 
     except commands.ExtensionNotLoaded:
         msg = await ctx.send(f"❌ Cog `cogs.{cog}` is not loaded.")
@@ -102,10 +112,12 @@ async def reload(ctx: commands.Context, cog: str):
 #==============
 @bot.command(name="sync")
 @commands.is_owner()
+
 async def sync(ctx: commands.Context):
     msg = await ctx.reply("Syncing command tree...")
     synced = await bot.tree.sync()
     await msg.edit(content=f"Synced {len(synced)} commands.")
+    logging.info(f"Synced command tree using the command. Synced {len(synced)} Commands")
     await asyncio.sleep(5)
     await msg.delete()
     await ctx.message.delete()  
@@ -121,7 +133,8 @@ async def show_userinfo(interaction: discord.Interaction, member: discord.Member
     try:
         await interaction.edit_original_response(embed=embed)  # Send the embed
     except Exception as e:
-        logging.error(f"Failed to send user info embed: {e}")
+        logging.error(
+            f"Failed to send user info embed: {e} - Guild:{interaction.guild.name}({interaction.guild_id}), Member:{member.name}({member.id})")
         await interaction.edit_original_response(f"Failed to send user info. {e}", ephemeral=True)
 
 
@@ -162,7 +175,7 @@ async def show_banner(interaction: discord.Interaction, member: discord.Member):
         embed.set_image(url=user.banner.url)
     
     except Exception as e:
-        return await interaction.edit_original_response(content=f"Failed to get the banner: {e}")
+        return await interaction.edit_original_response(content=f"Failed to get banner: {e}")
 
     await interaction.edit_original_response(embed=embed)
 

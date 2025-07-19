@@ -25,7 +25,7 @@ class ConfirmView(discord.ui.View):
             try:
                 await self.message.edit(view=self)  # Edit the message to disable buttons on timeout
             except discord.NotFound:
-                logging.warning("Message not found when trying to edit on timeout.")
+                logging.warning(f"Message {self.message} not found when trying to edit on timeout.")
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -185,7 +185,6 @@ class Games(commands.Cog):
         if member == interaction.user:
             return await interaction.response.send_message("You can't play with yourself.", ephemeral=True)
         await interaction.response.defer()
-            
         player1 = interaction.user 
         player2 = member
         if player2 != interaction.guild.me: # Check if the member is not the bot itself

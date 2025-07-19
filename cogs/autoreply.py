@@ -4,14 +4,6 @@ import logging
 from discord.ext import commands
 from discord import app_commands
 
-# logging.basicConfig(
-#     level=logging.ERROR,  # Log only errors and above (e.g., critical)
-#     format='[%(asctime)s] [%(levelname)s] %(message)s', # Log format with timestamp and level
-#     datefmt='%Y-%m-%d %H:%M:%S', # Date format for the timestamp
-#     filename='bot.log',  # Log file name
-#     filemode='a'  # Append to existing file
-# )
-
 
 @app_commands.guild_only()
 @app_commands.default_permissions(manage_guild=True)
@@ -59,7 +51,8 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 await db.commit()
 
             except Exception as e:
-                return await interaction.response.send_message(f"Error: `{e}`")
+                logging.error(f"Error inserting autoreply into database: `{e}`")
+                return await interaction.response.send_message(f"Error adding autoreply")
             
             await interaction.response.send_message(f"✅ Added a new autoreply with trigger: `{trigger}`")
     
@@ -91,7 +84,8 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 await db.commit()
 
             except Exception as e:
-                return await interaction.response.send_message(f"Error: `{e}`")   
+                logging.error(f"Error updating autoreply {trigger} for guild {interaction.guild.name}({interaction.guild_id}): `{e}`")   
+                return await interaction.response.send_message(f"Error updating autoreply")
 
             await interaction.response.send_message(f"✅ Successfully updated the autoreply:\nTrigger: `{trigger}`\nNew reply: `{reply}`")
 
@@ -119,7 +113,8 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 await db.commit()
 
             except Exception as e:
-                return await interaction.response.send_message(f"Error: `{e}`")  
+                logging.error(f"Error deleting autoreply {trigger} from guild {interaction.guild.name}({interaction.guild_id}): `{e}`") 
+                return await interaction.response.send_message(f"Error deleting autoreply")  
 
             await interaction.response.send_message(f"✅ Successfully removed the autoreply for trigger: `{trigger}`")
 
@@ -143,7 +138,8 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 await db.commit()
 
             except Exception as e:
-                return await interaction.response.send_message(f"Error: `{e}`")  
+                logging.error(f"Error clearing autoreplies for guild {interaction.guild.name}({interaction.guild_id}): `{e}`")  
+                return await interaction.response.send_message(f"Error clearing autoreplies`")  
 
             await interaction.response.send_message("✅ Successfully cleared all autoreplies for this server.")
     
@@ -162,10 +158,10 @@ class AutoReply(commands.GroupCog, name="autoreply"):
 
         except Exception as e:
             logging.error(f"Error fetching autoreplies: {e}")
-            return await interaction.edit_original_response(content=f"Error: `{e}`")
+            return await interaction.edit_original_response(content=f"Error fetching autoreplies.")
             
         if not rows:
-            return await interaction.edit_original_response(content="No autoreplies set for this server.")
+            return await interaction.edit_original_response(content="No autoreplies were set for this server.")
         
         # Format the autoreplies into a message
         entries = []
@@ -189,7 +185,7 @@ class AutoReply(commands.GroupCog, name="autoreply"):
                 entries.append(f"> `{trigger}` → {response}")
 
         msg = "\n".join(entries)
-        await interaction.followup.send(content=f"📃 **Autoreplies in this server:**\n\n{msg}")
+        await interaction.followup.send(content=f"**Autoreplies in this server:**\n\n{msg}")
 
 
 # Registers the cog with the bot and creates the database table if it doesn't exist
