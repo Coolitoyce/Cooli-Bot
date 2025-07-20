@@ -73,8 +73,10 @@ class NewReminderView(discord.ui.View):
                     remind_at_datetime = datetime.fromtimestamp(self.remind_at) # Convert the remind_at timestamp to a datetime object
                     timezone = await get_user_timezone(self.og_reminder_creator) # Get the timezone of the original reminder creator
                     remind_at_datetime = timezone.localize(remind_at_datetime) # Localize the datetime to the original creator's timezone
+                    now = datetime.now(tz=timezone) # Get the current time in the original creator's timezone
                     # Check if the reminder time is in the past
-                    if discord.utils.utcnow() > remind_at_datetime:
+                    if now > remind_at_datetime:
+                        logging.warning(f"[Reminder] User {interaction.user.name} ({interaction.user.id}) tried to set a reminder for a past time: Now = {now}, Reminder at = ({remind_at_datetime}).")
                         await interaction.response.send_message("This reminder has expired.", ephemeral=True)
 
                     else:
@@ -152,8 +154,10 @@ def get_datetime_format(remind_at: str):
     ]
     time_formats = [
         "%I:%M %p", # 12:00 PM
+        "%I:%M%p", # 12:00PM
         "%H:%M", # 12:00
-        "%I %p" # 12 PM
+        "%I %p", # 12 PM
+        "%I%p" # 12PM
     ]
     # Combined format for both date and time format lists
     combined_formats = [f"{date} {time}" for date, time in product(date_formats, time_formats)]
@@ -291,9 +295,9 @@ class Reminder(commands.Cog):
     async def remindme(self, interaction: discord.Interaction, remind_at: str, about: str):
         """Reminds you of something after a certain amount of time"""
         await interaction.response.defer()
-        time_only_formats = ["%I:%M %p", "%H:%M", "%I %p"]
-        month_only_formats = ["%Y-%m", "%Y/%m", "%Y %m", "%Y-%b", "%Y/%b", "%Y %b", "%Y-%B", "%Y/%B", "%Y %B"]
-        day_formats = ["%a %I:%M %p", "%A %I:%M %p", "%a %H:%M", "%A %H:%M"]
+        if len(about) > 30:
+            logging.warning(f"[Reminder] User {interaction.user.name} ({interaction.user.id}) tried to set a reminder with too long reason: {about}")
+            return await interaction.edit_original_response(content="Reminder reason is too long! Maximum length is 30 characters.")
         # Get the user's timezone
         user_timezone = await get_user_timezone(interaction.user)
         logging.info(f"[Reminder] User timezone: {user_timezone} for user {interaction.user.name} ({interaction.user.id})")
@@ -309,6 +313,9 @@ class Reminder(commands.Cog):
         ) 
         # Try datetime parsing if the user input is a valid datetime format
         if format_str:
+            time_only_formats = ["%I:%M %p", "%I:%M%p", "%H:%M", "%I %p", "%I%p"] # Formats that only contain time, no date
+            month_only_formats = ["%Y-%m", "%Y/%m", "%Y %m", "%Y-%b", "%Y/%b", "%Y %b", "%Y-%B", "%Y/%B", "%Y %B"] # Formats that only contain month and year
+            formatstr_has_day_name = "%a" in format_str or "%A" in format_str # Check if the format string contains a day name
             try:
                 remind_at_datetime = datetime.strptime(remind_at, format_str) # Parse the time with the correct format
                 logging.info(f"[Reminder] Parsed datetime '{remind_at}' with format '{format_str}' for user {interaction.user.name} ({interaction.user.id})")
@@ -319,7 +326,7 @@ class Reminder(commands.Cog):
                     content=f"Invalid datetime format. Use formats like `2025-07-20`, `20-7 10 AM`, or `9 PM`."
                 )
             # Set year, month, and day for time only formats or day formats
-            if format_str in time_only_formats or format_str in day_formats: 
+            if format_str in time_only_formats or formatstr_has_day_name: 
                 remind_at_datetime = remind_at_datetime.replace(year=now.year, month=now.month, day=now.day)
 
              # Check if there's a day name in the user input
@@ -340,14 +347,13 @@ class Reminder(commands.Cog):
                     current_weekday = now.weekday() # Integer value of today
                     days_until = (target_weekday - current_weekday + 7) % 7 or 7 # Get the number of days until the target week day
                     # Construct the correct datetime
-                    remind_at_datetime = user_timezone.localize(
-                        datetime(
+                    remind_at_datetime = datetime(
                         year=now.year,
                         month=now.month,
                         day=now.day,
                         hour=remind_at_datetime.hour,
                         minute=remind_at_datetime.minute,
-                    )) + relativedelta(days=days_until)
+                    ) + relativedelta(days=days_until)
                 else:
                     logging.warning(f"[Reminder] Invalid weekday in '{remind_at}' for day format '{format_str}'")
                     return await interaction.edit_original_response(
@@ -369,8 +375,8 @@ class Reminder(commands.Cog):
                 # Set day to next day for past time only formats
                 if format_str in time_only_formats:
                     remind_at_datetime += relativedelta(days=1)
-                # Set day to same day in next week if the target day is today 
-                elif format_str in day_formats:
+                # Set the day to the same day in next week if the target day is today 
+                elif formatstr_has_day_name:
                     remind_at_datetime += relativedelta(days=7)
                 # Set year to next year for past formats with no year
                 elif "%Y" not in format_str:
@@ -394,7 +400,7 @@ class Reminder(commands.Cog):
             if now > natural_parsed: # If parsing using dateparser has failed
                 logging.warning(f"[Reminder] Invalid or past dateparser time: '{remind_at}', result={remind_at_datetime}")
                 return await interaction.edit_original_response(
-                    content="Invalid time format. Use formats like:\n```3 days\n5 hours 30 min\n2025-07-20 9:00 PM\n20-7 10 AM\n2025-7-20\n9 PM\nWednesday```"
+                    content="Invalid time format or time provided is in the past. Use formats like:\n```3 days\n5 hours 30 min\n2025-07-20 9:00 PM\n20-7 10 AM\n2025-7-20\n9 PM\nWednesday```"
                 )
         # If everything fails
         else:
@@ -546,8 +552,9 @@ class Reminder(commands.Cog):
         entries = []
         for id, remind_at, reminder_about in rows:
             try:
-                remind_at = int(remind_at)
-                remind_at_datetime = datetime.fromtimestamp(remind_at)
+                remind_at = int(remind_at) # Ensure remind_at is an integer timestamp
+                user_timezone = await get_user_timezone(interaction.user) # Get the user's timezone
+                remind_at_datetime = datetime.fromtimestamp(remind_at, tz=pytz.UTC).astimezone(user_timezone) # Convert the timestamp to a datetime object in the user's timezone
                 entries.append(f"> ID: {id} - {discord.utils.format_dt(remind_at_datetime, 'R')} - About: **{reminder_about}**")
             except Exception as e:
                 logging.error(f"[Reminder Error] Failed to view reminder with id: {id}, time: {remind_at}: {e}")
