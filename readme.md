@@ -38,8 +38,10 @@ This bot highlights my learning journey with the library — showcasing command 
 
 - ### Reminder Commands
   
-  - Set reminders using simple time formats `3 days 1 hr 30 min`
-  - The bot will DM you when the time is up.
+  - Set reminders using whatever format you prefer, the bot supports a wide range of formats like:
+    - `3 days 5 hrs`, `9 am`, `tomorrow at 5 pm`, `2025-7-25 11:30`, etc.
+  - You can also set your timezone using `/reminder <timezone>` so the bot converts hours to your local time.
+  - When it's time, the bot will DM you.
 
 - ### Fun Commands
 

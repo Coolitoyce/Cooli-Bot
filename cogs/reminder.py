@@ -228,7 +228,23 @@ async def get_user_timezone(user: discord.User):
     except Exception as e:
         logging.error(f"[Reminder Error] Failed to get timezone for user {user.name} ({user.id}), timezone = {result}: {e}")
         return pytz.UTC
-    
+
+def format_utc_offset(timezone: pytz.BaseTzInfo) -> str:
+    """Formats the UTC offset to HH:MM format"""
+    utc_offset = timezone.utcoffset(datetime.now()).total_seconds() / 3600 # Get the UTC offset in hours (float)
+    # If there is a decimal part
+    if utc_offset - int(utc_offset) > 0:
+        float_part = utc_offset - int(utc_offset) # Get the float part
+        minutes = int(float_part * 60) # Get minutes 
+        minutes = (str(minutes) + '0') if minutes < 10 else minutes
+        utc_offset = int(utc_offset)
+        utc_offset = ('+' + str(utc_offset)) if utc_offset > 0 else utc_offset # Format the UTC offset with a '+' sign if it's positive
+        utc_offset = f"{utc_offset}:{minutes}"
+    else:
+        utc_offset = int(utc_offset)
+        utc_offset = ('+' + str(utc_offset)) if utc_offset > 0 else utc_offset # Format the UTC offset with a '+' sign if it's positive
+        utc_offset = f"{utc_offset}:00"
+    return utc_offset    
 
 class Reminder(commands.Cog):
     """Reminder cog to set reminders for users"""
@@ -259,7 +275,7 @@ class Reminder(commands.Cog):
                     
                     # Send a DM to the user with the reminder message
                     embed = discord.Embed(title="Reminder",
-                      description=f"Hey {user.mention}, You asked me to remind you of **{reminder_about}** {discord.utils.format_dt(now_datetime, style='R')}",
+                      description=f"Hey {user.mention}, You asked me to remind you of **{reminder_about}** at {discord.utils.format_dt(now_datetime, style='f')}",
                       colour=0x00b0f4,
                       timestamp=discord.utils.utcnow())
 
@@ -558,12 +574,11 @@ class Reminder(commands.Cog):
                 entries.append(f"> ID: {id} - {discord.utils.format_dt(remind_at_datetime, 'R')} - About: **{reminder_about}**")
             except Exception as e:
                 logging.error(f"[Reminder Error] Failed to view reminder with id: {id}, time: {remind_at}: {e}")
-
             
         msg = "\n".join(entries)
         user_timezone = await get_user_timezone(interaction.user) # Get the user's timezone
-        utc_offset = user_timezone.utcoffset(datetime.now()).total_seconds() / 3600 # Get the UTC offset in hours
-        utc_offset = ('+' + str(utc_offset)) if utc_offset > 0 else utc_offset # Format the UTC offset with a '+' sign if it's positive
+        utc_offset = format_utc_offset(user_timezone)
+
         if user_timezone == pytz.UTC:
             msg += "\n\n**Timezone:** UTC (Default).\nNote: Set your timezone using `/reminder timezone`." # Add a note about the user's timezone
         else: 
@@ -600,9 +615,7 @@ class Reminder(commands.Cog):
             return await interaction.edit_original_response(
                 content="Invalid timezone. Use a valid timezone like `Europe/Helsinki` or `America/New_York`. Try the autocomplete!"
             )
-            
-        utc_offset = pytz.timezone(timezone).utcoffset(datetime.now()).total_seconds() / 3600 # Get the UTC offset in hours
-        utc_offset = ('+' + str(utc_offset)) if utc_offset > 0 else utc_offset # Format the UTC offset with a '+' sign if it's positive
+        utc_offset = format_utc_offset(pytz.timezone(timezone)) # Format the UTC offset
 
         async with aiosqlite.connect('database.db') as db:
             try:
